@@ -208,5 +208,51 @@ namespace System.Text.Json
         ///   Returns <see cref="JsonValueKind.String"/>
         /// </summary>
         public override JsonValueKind ValueKind { get => JsonValueKind.String; }
+
+        /// <summary>
+        ///   Converts the text value of this instance, which should encode binary data as base-64 digits, to an equivalent 8-bit unsigned <see cref="byte"/> array.
+        ///   The return value indicates wether the conversion succeeded.
+        /// </summary>
+        /// <param name="value">
+        ///   When this method returns, contains the <see cref="byte"/> array equivalent of the text contained in this instance,
+        ///   if the conversion succeeded.
+        /// </param>
+        /// <returns>
+        ///   <see langword="true"/> if text was converted successfully; othwerwise returns <see langword="false"/>.
+        /// </returns>
+        internal bool TryGetBytesFromBase64(out byte[] value)
+        {
+            Debug.Assert(_value.Length > 0);
+
+            // we decode string -> byte, so the resulting length will
+            // be /4 * 3 - padding. To be on the safe side, keep padding in slice later
+            int bufferSize = _value.Length / 4 * 3;
+
+            byte[] arrayToReturnToPool = null;
+            try
+            {
+                Span<byte> buffer = bufferSize <= 256
+                    ? stackalloc byte[bufferSize]
+                    : arrayToReturnToPool = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+                if (Convert.TryFromBase64String(_value, buffer, out int bytesWritten))
+                {
+                    value = buffer.Slice(0, bytesWritten).ToArray();
+                    return true;
+                }
+                else
+                {
+                    value = default;
+                    return false;
+                }
+            }
+            finally
+            {
+                if (arrayToReturnToPool != null)
+                {
+                    ArrayPool<byte>.Shared.Return(arrayToReturnToPool);
+                }
+            }
+        }
     }
 }
