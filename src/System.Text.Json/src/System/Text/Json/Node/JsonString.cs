@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Globalization;
+using System.Diagnostics;
+using System.Buffers;
 
 namespace System.Text.Json
 {
